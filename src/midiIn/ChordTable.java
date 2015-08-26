@@ -1,4 +1,4 @@
-package midiIn;
+package suffix;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -25,7 +25,7 @@ public class ChordTable {
 	
 	/**
 	 * Creates an internal chord table by adding each line to a map where
-	 * the set of notes creating a chord is the key and the route is the value. 
+	 * the set of notes creating a chord is the key and the root is the value. 
 	 * @param line
 	 */
 	private void addToTable(String line) {
@@ -39,12 +39,12 @@ public class ChordTable {
 	}
 	
 	/**
-	 * Looks up the route of the chord.
+	 * Looks up the root of the chord.
 	 * If the chord is not found in the table, returns 13.
 	 * @param chord
-	 * @return route note.
+	 * @return root note.
 	 */
-	public int getRoute(Set<Integer> chord) {
+	public int getroot(Set<Integer> chord) {
 		if(table.get(chord) == null) return 13;
 		return table.get(chord);
 	}

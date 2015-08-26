@@ -1,54 +1,75 @@
-package midiIn;
+package suffix;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 public class Node {
-	String text;
-	List<Node> suffixes;
+	End end;
+	int start;
+	int length;
+	int referenceChannel;
+	Map<Integer, Integer> channels;
+	Map<Character, Node> edges;
+	Node parent;
 	Node link;
 	
-	public Node(String text) {
-		this.text = text;
-		suffixes = new LinkedList();
+	public Node(int start, End end, Node parent, int referenceChannel) {
+		this.parent = parent;
+		this.edges = new HashMap();
+		this.channels = new HashMap();
+		this.referenceChannel = referenceChannel;
+		channels.put(referenceChannel, start);
+		this.end = end; 
+		this.start = start;
+		this.length = end.end - start;
 	}
 	
-	public Node(char text) {
-		this.text = "" + text;
-		suffixes = new LinkedList();
+	public void passingNode(int referenceChannel, int start) {
+		channels.put(referenceChannel, start);
 	}
 	
-	public void addChar(char c) {
-		if(suffixes.isEmpty()) {
-			text = text + c;
-		} else {
-			for(Node node: suffixes) {
-				node.addChar(c);
+	public void printNode() {
+		if(start < end.end) {
+			System.out.print("[<" + Channels.list.get(referenceChannel).substring(start, end.end) + ">");
+			if(parent != null) {
+				System.out.print(" P:" + parent.getWord());
 			}
+			if(link != null) {
+				System.out.print(" L:" + link.getWord());
+			}
+//			System.out.print(" C:");
+//			for(int i: channels.keySet()) {
+//				System.out.print(i + " ");
+//			}
+			if(!edges.isEmpty()) {
+				for(Node n: edges.values()) {
+					n.printNode();
+				}
+			}
+			System.out.print("]");
 		}
 	}
 	
-	public void setLink(Node link) {
-		this.link = link;
+	public String getWord() {
+		int start = channels.get(referenceChannel);
+		return Channels.list.get(referenceChannel).substring(start, end.end);
 	}
 	
-	public void addSuffix(Node suffix) {
-		suffixes.add(suffix);
+	public int getStartPos(int refenceChannel) {
+		return channels.get(referenceChannel);
 	}
 	
-	public void printNode(int n) {
-		System.out.println(text);
-		if(link != null) {System.out.println("Link: " + link.text);}
-		if(suffixes.isEmpty()) {return;}
-		for(Node node: suffixes) {
-			printSpace(n);
-			node.printNode(n + 1);
+	public void setStartPos(int referenceChannel, int start) {
+		channels.put(referenceChannel, start);
+	}
+	
+	public void updateStartPos(int length) { 
+		start = start + length;
+		for(int c: channels.keySet()) {
+			channels.put(c, channels.get(c) + length);
 		}
-	}
-	
-	private void printSpace(int n) {
-		if(n == 0) {return;}
-		System.out.print("  ");
-		printSpace(n - 1);
 	}
 }

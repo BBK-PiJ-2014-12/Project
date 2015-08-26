@@ -1,132 +1,178 @@
-package midiIn;
+package suffix;
 
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map.Entry;
 
 public class SuffixTree {
+	End end;
+	String word;
 	Node root;
-	Node nextNode;
 	Node activeNode;
-	Node activeEdge;
 	Node prevNode;
+	int activeEdge;
 	int activeLength;
-	char activePoint;
 	int remainder;
-	String toInsert;
-	NodeFactory factory;
-	boolean completeInsert;
+	Channels channels;
 	
-	public SuffixTree(NodeFactory factory) {
-		this.root = new Node("");
+	public SuffixTree () {
+		this.root = new Node(0, new End(1) , null, 0);
 		this.activeNode = root;
-		this.prevNode = null;
-		this.activeEdge = null;
+		this.activeEdge = -1;
 		this.activeLength = 0;
-		this.remainder = 1;
-		this.toInsert = "";
-		this.factory = factory;
-		this.completeInsert = false;
+		this.remainder = 0;
+		this.channels = new Channels();
 	}
 	
-	public void analyseString(String word) {
+	public void analyseWord(String word, int channelID) { 
+		this.word = word;
+		this.end = new End(0);
+		channels.list.put(channelID, word);
+		
 		for(int i = 0; i < word.length(); i++) {
-			addNextChar(word.charAt(i));
-		}
-	}
+			char c = word.charAt(i);
+			end.end++;
+			remainder++;
 
-	private void addNextChar(char c) {
-		toInsert = toInsert + c;
-		for(Node node: root.suffixes) {
-			node.addChar(c);
-		}
-		if(activeEdge != null) {
-			activeLength++;
-			if(activeEdge.text.charAt(activeLength - 1) != c) {
-				insertNode();
-			} else if (activeEdge.text.length() == toInsert.length()){
-				activeLength = activeLength - activeEdge.text.length();
-				activeNode = activeEdge; 
-				activeEdge = null;
-			}
-		} else {
-			for(Node node: activeNode.suffixes) {
-				if(node.text.charAt(0) == c) {
-					activeEdge = node; 
-					activeLength++;
-				}
-			}	
-			if(activeEdge == null) {
-				insertNode();
-			} else if (activeEdge.text.length() == toInsert.length()){
-				activeLength = activeLength - activeEdge.text.length();
-				activeNode = activeEdge; 
-				activeEdge = null;
-			}
-		}
-	}
-	
-	private void insertNode() {
-		insertHelper(0, activeLength);
-		activeNode = root;
-		if(completeInsert){
-			for (int j = 0; j < toInsert.length() - 1; j++) {
-				int length = toInsert.length();
-				char c = toInsert.charAt(j);
-				if (nextNode(c).isPresent()) {
-					Node tempNode = nextNode(c).get();
-	
-					tempNode.suffixes.add(new Node(tempNode.text.substring(length - 1)));
-					tempNode.suffixes.add(new Node(toInsert.charAt(toInsert.length() - 1)));
-					tempNode.text = tempNode.text.substring(0, length - 1);
-					length--;
-					
-					if (prevNode != null) {
-						prevNode.link = tempNode;
+			if(activeLength == 0) {
+				if(activeNode.edges.containsKey(c)) {
+					if(activeNode.edges.get(c).channels.containsKey(channelID)) {
+						activeEdge = activeNode.edges.get(c).channels.get(channelID);
+					} else {
+						activeEdge = i;
+						activeNode.edges.get(c).channels.put(channelID, i);
 					}
-					prevNode = tempNode;
+					activeLength++; 
+				} else {
+					activeNode.edges.put(c, new Node(i, end, activeNode, channelID));
+					remainder--;
+				}
+			} else if(activeLength == getActiveEdge().end.end - getActiveEdge().start){
+				 
+					activeNode = getActiveEdge();
+					if(activeNode.edges.containsKey(c)) {
+						if(activeNode.edges.get(c).channels.containsKey(channelID)) {
+							activeEdge = activeNode.edges.get(c).channels.get(channelID);
+							activeLength = 1;
+						} else {
+							activeEdge = i;
+							activeNode.channels.put(channelID, i);
+							activeLength = 1;
+						}
+					} else {
+						while(remainder > 1) {
+							activeNode.edges.put(c, new Node(i, end, activeNode, channelID));
+							remainder--;
+							if(activeNode.parent == null || activeNode.parent.link == null) {
+								activeNode = root;
+								activeEdge++;
+								activeLength--;
+							} else {
+								activeNode = activeNode.parent.link;
+							}
+						}
+						if(!root.edges.containsKey(c)) {
+							root.edges.put(c, new Node(i, end, activeNode, channelID));
+							remainder--;
+						} else {
+							if(activeNode.edges.get(c).channels.containsKey(channelID)) {
+								activeEdge = activeNode.edges.get(c).channels.get(channelID);
+							} else {
+								activeEdge = i;
+								activeNode.edges.get(c).channels.put(channelID, i);
+							}
+							activeLength = 1;
+						}
+					}
+				} else {
+					if(getActiveEdge().getWord().charAt(activeLength) == c) {
+						activeLength++; 
+					} else {
+						insertAll(i, c, channelID);
 				}
 			}
-			completeInsert = false;
 		}
-		clearUp();
+		reset();
+		this.remainder = 0;
+		this.word = "";
 	}
 	
-	public void insertHelper(int i, int length) {
-		if(length == 0) return;
-		for (int j = i; j < toInsert.length() - 1; j++) {
-			char c = toInsert.charAt(j);
-			if (nextNode(c).isPresent()) {
-				Node tempNode = nextNode(c).get();
-
-				tempNode.suffixes.add(new Node(tempNode.text.substring(length - 1)));
-				tempNode.suffixes.add(new Node(toInsert.charAt(toInsert.length() - 1)));
-				tempNode.text = tempNode.text.substring(0, length - 1);
-				length--;
-
-				if (prevNode != null) {
-					prevNode.link = tempNode;
+	public String getChannel() {
+		return channels.list.get(activeNode.referenceChannel);
+	}
+	
+	public Node getActiveEdge()	{
+   		return activeNode.edges.get(word.charAt(activeEdge));
+	}
+	
+	private void reset() {
+		this.activeNode = root;
+		this.activeEdge = -1;
+		this.activeLength = 0;
+	}
+	
+	private void insertAll(int i, char c, int channelID) {
+		int internalStart = getActiveEdge().getStartPos(channelID);
+		End internalEnd = new End(internalStart + activeLength);
+		int externalStart = i;
+		End externalEnd = end;
+		
+		while(remainder > 1) {
+			activeNode = activeNode.edges.get(word.charAt(activeEdge));
+			if(activeNode.end.end - activeNode.start > 1) {
+				Node internal = new Node(activeNode.start, new End(activeNode.start + activeLength), activeNode.parent, activeNode.referenceChannel);
+				if(prevNode != null) {
+					prevNode.link = internal;
 				}
-				prevNode = tempNode;
+				Node newExternal = new Node(externalStart, externalEnd, internal, channelID);
+
+				internal.channels = new HashMap(activeNode.channels);
+				internal.link = root;
+				
+				internal.edges.put(c, newExternal);
+				activeNode.parent.edges.replace(getChannel().charAt(activeNode.getStartPos(channelID)), internal);
+				activeNode.updateStartPos(activeLength);
+				activeNode.parent = internal;
+				internal.edges.put(activeNode.getWord().charAt(0), activeNode);
+
+				prevNode = internal;
+				remainder--;
+				
+				if(internal.parent.link == null) {
+					activeNode = root;
+					activeEdge++;
+					activeLength--;
+				} else {
+					activeNode = internal.parent.link;
+				}
+			} else {
+				Node newExternal = new Node(externalStart, externalEnd, activeNode, channelID);
+				activeNode.edges.put(c, newExternal);
+				
+				if(prevNode != null) {
+					prevNode.link = activeNode;
+				}
+				if(activeNode.parent.link == null) {
+					activeNode = root;
+					activeEdge++;
+					activeLength--;
+				} else {
+					activeNode = activeNode.parent.link;
+				}
+				remainder--;
 			}
 		}
-		toInsert = toInsert.substring(1);
-		if(activeNode.link != null) {
-			completeInsert = true;
-			activeNode = activeNode.link;
-			insertHelper(i, activeLength); 
-		} 
-	}
-	
-	public void clearUp() {
-		if(toInsert != "") root.suffixes.add(new Node(toInsert.charAt(toInsert.length() - 1)));
-		activeEdge = null;
-		activeNode = root;
-		activeLength = 0;
-		toInsert = "";
+		if(!root.edges.containsKey(c)) {
+			root.edges.put(c, new Node(i, end, activeNode, channelID));
+			remainder--;
+		} else {
+			if(activeNode.edges.get(c).channels.containsKey(channelID)) {
+				activeEdge = activeNode.edges.get(c).channels.get(channelID);
+			} else {
+				activeEdge = i;
+				activeNode.edges.get(c).channels.put(channelID, i);
+			}
+			activeLength = 1;
+		}
 		prevNode = null;
-	}
-	public Optional<Node> nextNode(char c) {
-		return activeNode.suffixes.stream()
-				.filter(node -> node.text.charAt(0) == c)
-				.findFirst();
 	}
 }

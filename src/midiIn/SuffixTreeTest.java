@@ -1,15 +1,18 @@
-package midiIn;
-
-import java.io.IOException;
-
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiUnavailableException;
+package suffix;
 
 public class SuffixTreeTest {
 	public static void main(String[] args) {
-		NodeFactory factory = new NodeFactory();
-		SuffixTree stb = new SuffixTree(factory);
-		stb.analyseString("abcabxabcd");;
-		stb.root.printNode(0);
+		SuffixTreeTest main = new SuffixTreeTest();
+		main.launch();
+	}
+	
+	public void launch() {
+		SuffixTree tree = new SuffixTree();
+		tree.analyseWord("abcabxabcd", 2);
+		tree.analyseWord("ccbaxdcbb$", 8);
+		tree.analyseWord("ccbaxdcbaxtb$", 3);
+		tree.analyseWord("bxcccabxccda$", 4);
+		tree.analyseWord("abcfe", 9);
+		tree.root.printNode();
 	}
 }
